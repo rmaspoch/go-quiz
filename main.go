@@ -29,29 +29,8 @@ func main() {
 
 	quiz := readQuiz("quiz.csv")
 	totalQuestions := len(quiz)
-	correctAnswers := 0
 
-	correct := make(chan struct{})
-	done := make(chan bool)
-
-	go func() {
-		runQuiz(quiz, correct, done)
-	}()
-
-	exitLoop := false
-	for !exitLoop {
-		select {
-		case <-done:
-			fmt.Println("Done")
-			exitLoop = true
-		case <-correct:
-			correctAnswers++
-		case <-time.After(time.Duration(timeLimit) * time.Second):
-			fmt.Println("\nTime limit reached")
-			exitLoop = true
-		}
-	}
-
+	correctAnswers := runQuiz(quiz)
 	fmt.Printf("You answered %v questions correctly out of %v", correctAnswers, totalQuestions)
 }
 
@@ -79,18 +58,33 @@ func parseLines(lines [][]string) []questionAnswer {
 }
 
 // returns number of correct answers
-func runQuiz(quiz []questionAnswer, correct chan<- struct{}, done chan<- bool) {
-	for _, q := range quiz {
-		fmt.Printf("How much is %v ", q.question)
-		var answer string
-		fmt.Scanf("%s\n", &answer)
-		if answer == q.answer {
-			correct <- struct{}{}
-		} else {
-			fmt.Println("Incorrect")
+func runQuiz(quiz []questionAnswer) int {
+	correctAnswers := 0
+	timeout := time.NewTimer(time.Duration(timeLimit) * time.Second)
+	result := make(chan string)
+
+	for i, q := range quiz {
+		fmt.Printf("Question #%d - %v ", i+1, q.question)
+
+		go func() {
+			var answer string
+			fmt.Scanf("%s\n", &answer)
+			result <- answer
+		}()
+
+		select {
+		case <-timeout.C:
+			fmt.Println("\nYou have run out of time!")
+			return correctAnswers
+		case answer := <-result:
+			if answer == q.answer {
+				correctAnswers++
+			} else {
+				fmt.Println("Incorrect!")
+			}
 		}
 	}
-	done <- true
+	return correctAnswers
 }
 
 func guard(e error) {

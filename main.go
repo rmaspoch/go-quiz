@@ -18,12 +18,8 @@ type questionAnswer struct {
 // time limit flag
 var timeLimit int
 
-func init() {
-	flag.IntVar(&timeLimit, "limit", 15, "Time limit in seconds")
-}
-
 func main() {
-	// read time limit from command line
+	flag.IntVar(&timeLimit, "limit", 15, "Time limit in seconds")
 	flag.Parse()
 	fmt.Printf("Time limit set to %v seconds\n", timeLimit)
 
@@ -31,17 +27,23 @@ func main() {
 	totalQuestions := len(quiz)
 
 	correctAnswers := runQuiz(quiz)
-	fmt.Printf("You answered %v questions correctly out of %v", correctAnswers, totalQuestions)
+	fmt.Printf("You answered %v questions correctly out of %v\n", correctAnswers, totalQuestions)
 }
 
 func readQuiz(fileName string) (quiz []questionAnswer) {
 	file, err := os.Open(fileName)
-	guard(err)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
 
 	reader := csv.NewReader(file)
 	var lines [][]string
 	lines, err = reader.ReadAll()
-	guard(err)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
 
 	return parseLines(lines)
 }
@@ -85,10 +87,4 @@ func runQuiz(quiz []questionAnswer) int {
 		}
 	}
 	return correctAnswers
-}
-
-func guard(e error) {
-	if e != nil {
-		log.Fatal(e)
-	}
 }

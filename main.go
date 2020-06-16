@@ -15,34 +15,41 @@ type questionAnswer struct {
 	answer   string
 }
 
-// time limit flag
-var timeLimit int
+const (
+	defaultLimit    = 15
+	defaultQuizFile = "quiz.csv"
+)
 
 func main() {
-	flag.IntVar(&timeLimit, "limit", 15, "Time limit in seconds")
+	// time limit flag
+	var timeLimit int
+	// file flag
+	var quizFile string
+
+	flag.IntVar(&timeLimit, "limit", defaultLimit, "Time limit in seconds")
+	flag.StringVar(&quizFile, "file", defaultQuizFile, "CSV file with questions and answers")
 	flag.Parse()
+
+	fmt.Printf("Using %s CSV file\n", quizFile)
 	fmt.Printf("Time limit set to %v seconds\n", timeLimit)
 
-	quiz := readQuiz("quiz.csv")
+	quiz := readQuiz(quizFile)
 	totalQuestions := len(quiz)
 
-	correctAnswers := runQuiz(quiz)
+	correctAnswers := runQuiz(quiz, timeLimit)
 	fmt.Printf("You answered %v questions correctly out of %v\n", correctAnswers, totalQuestions)
 }
 
 func readQuiz(fileName string) (quiz []questionAnswer) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
+		log.Fatalf("Unable to open file: %v\n", err)
 	}
 
 	reader := csv.NewReader(file)
-	var lines [][]string
-	lines, err = reader.ReadAll()
+	lines, err := reader.ReadAll()
 	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
+		log.Fatalf("Unable to read file: %v\n", err)
 	}
 
 	return parseLines(lines)
@@ -60,7 +67,7 @@ func parseLines(lines [][]string) []questionAnswer {
 }
 
 // returns number of correct answers
-func runQuiz(quiz []questionAnswer) int {
+func runQuiz(quiz []questionAnswer, timeLimit int) int {
 	correctAnswers := 0
 	timeout := time.NewTimer(time.Duration(timeLimit) * time.Second)
 	result := make(chan string)
